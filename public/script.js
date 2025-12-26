@@ -19,6 +19,8 @@ let highScore = localStorage.getItem('highScore') || 0;
 let gameRunning = false;
 let gamePaused = false;
 
+let highScores = JSON.parse(localStorage.getItem('highScores')) || [];
+
 highScoreElement.textContent = highScore;
 
 // Generate random food position
@@ -96,40 +98,28 @@ function gameOver() {
     highScore = score;
     highScoreElement.textContent = highScore;
     localStorage.setItem('highScore', highScore);
-    // Submit to backend
-    submitScore('Player', score);
   }
+  submitScore('Player', score);
   alert(`Game Over! Score: ${score}`);
 }
 
-// Submit score to backend
-async function submitScore(name, score) {
-  try {
-    await fetch('/api/highscores', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, score })
-    });
-    loadHighScores();
-  } catch (error) {
-    console.error('Error submitting score:', error);
-  }
+// Submit score to local storage
+function submitScore(name, score) {
+  highScores.push({ name, score });
+  highScores.sort((a, b) => b.score - a.score);
+  highScores = highScores.slice(0, 10);
+  localStorage.setItem('highScores', JSON.stringify(highScores));
+  loadHighScores();
 }
 
-// Load high scores from backend
-async function loadHighScores() {
-  try {
-    const response = await fetch('/api/highscores');
-    const scores = await response.json();
-    highScoresList.innerHTML = '';
-    scores.forEach((entry, index) => {
-      const li = document.createElement('li');
-      li.textContent = `${index + 1}. ${entry.name}: ${entry.score}`;
-      highScoresList.appendChild(li);
-    });
-  } catch (error) {
-    console.error('Error loading high scores:', error);
-  }
+// Load high scores from local storage
+function loadHighScores() {
+  highScoresList.innerHTML = '';
+  highScores.forEach((entry, index) => {
+    const li = document.createElement('li');
+    li.textContent = `${index + 1}. ${entry.name}: ${entry.score}`;
+    highScoresList.appendChild(li);
+  });
 }
 
 // Game loop
