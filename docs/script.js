@@ -31,8 +31,8 @@ highScoreElement.textContent = highScore;
 // Neural Network for AI
 class NeuralNetwork {
   constructor(weights) {
-    this.inputSize = 10;
-    this.hiddenSize = 6;
+    this.inputSize = 12;
+    this.hiddenSize = 12;
     this.outputSize = 4;
     if (weights) {
       this.weightsIH = weights.slice(0, this.inputSize * this.hiddenSize);
@@ -76,7 +76,7 @@ class NeuralNetwork {
 
 // Genetic Algorithm
 let population = [];
-let populationSize = 20;
+let populationSize = 50;
 let generation = 0;
 let bestFitness = 0;
 let bestNN = null;
@@ -96,11 +96,11 @@ function evaluateFitness(nn) {
   let simScore = 0;
   let simFood = generateFoodForSim();
   let steps = 0;
-  let maxSteps = 200; // prevent infinite loops
+  let maxSteps = 500; // prevent infinite loops
 
   while (steps < maxSteps) {
     // Get inputs
-    let inputs = getInputs(simSnake, simFood);
+    let inputs = getInputs(simSnake, simFood, simDx, simDy);
     let outputs = nn.predict(inputs);
     // Choose direction with highest output
     let maxIndex = outputs.indexOf(Math.max(...outputs));
@@ -146,7 +146,7 @@ function generateFoodForSim() {
   return f;
 }
 
-function getInputs(snake, food) {
+function getInputs(snake, food, dx, dy) {
   let head = snake[0];
   let distFoodX = food.x - head.x;
   let distFoodY = food.y - head.y;
@@ -183,7 +183,9 @@ function getInputs(snake, food) {
       break;
     }
   }
-  return [distFoodX, distFoodY, distWallUp, distWallDown, distWallLeft, distWallRight, distSelfUp, distSelfDown, distSelfLeft, distSelfRight].map(d => d / tileCount); // normalize
+  let normalized = [distFoodX, distFoodY, distWallUp, distWallDown, distWallLeft, distWallRight, distSelfUp, distSelfDown, distSelfLeft, distSelfRight].map(d => d / tileCount);
+  normalized.push(dx, dy);
+  return normalized;
 }
 
 function evolve() {
@@ -214,8 +216,8 @@ function evolve() {
     let child1 = [...child1Weights.slice(0, crossoverPoint), ...child2Weights.slice(crossoverPoint)];
     let child2 = [...child2Weights.slice(0, crossoverPoint), ...child1Weights.slice(crossoverPoint)];
     // Mutation
-    child1 = child1.map(w => Math.random() < 0.1 ? w + (Math.random() * 0.2 - 0.1) : w);
-    child2 = child2.map(w => Math.random() < 0.1 ? w + (Math.random() * 0.2 - 0.1) : w);
+    child1 = child1.map(w => Math.random() < 0.2 ? w + (Math.random() * 0.4 - 0.2) : w);
+    child2 = child2.map(w => Math.random() < 0.2 ? w + (Math.random() * 0.4 - 0.2) : w);
     newPopulation[i] = new NeuralNetwork(child1);
     if (i + 1 < populationSize) newPopulation[i + 1] = new NeuralNetwork(child2);
   }
@@ -332,15 +334,16 @@ function loadHighScores() {
 function gameLoop() {
   if (!gameRunning || gamePaused) return;
   if (solverMode && bestNN) {
-    let inputs = getInputs(snake, food);
+    let inputs = getInputs(snake, food, dx, dy);
     let outputs = bestNN.predict(inputs);
     let maxIndex = outputs.indexOf(Math.max(...outputs));
     let newDx = 0, newDy = 0;
-    if (maxIndex === 0 && dy === 0) { newDx = 0; newDy = -1; } // up
-    else if (maxIndex === 1 && dy === 0) { newDx = 0; newDy = 1; } // down
-    else if (maxIndex === 2 && dx === 0) { newDx = -1; newDy = 0; } // left
-    else if (maxIndex === 3 && dx === 0) { newDx = 1; newDy = 0; } // right
-    if (newDx !== 0 || newDy !== 0) {
+    if (maxIndex === 0) { newDx = 0; newDy = -1; } // up
+    else if (maxIndex === 1) { newDx = 0; newDy = 1; } // down
+    else if (maxIndex === 2) { newDx = -1; newDy = 0; } // left
+    else { newDx = 1; newDy = 0; } // right
+    // Prevent reversing
+    if (!(newDx === -dx && newDy === -dy)) {
       dx = newDx;
       dy = newDy;
     }
@@ -446,7 +449,7 @@ solverBtn.addEventListener('click', () => {
   solverMode = true;
   // Initialize GA
   initializePopulation();
-  for (let i = 0; i < 50; i++) {
+  for (let i = 0; i < 100; i++) {
     evolve();
   }
   // Start the game in solver mode
