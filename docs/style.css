@@ -31,6 +31,12 @@ canvas {
   margin: 20px 0;
 }
 
+#solver-progress {
+  margin: 10px 0;
+  color: #333;
+  font-weight: bold;
+}
+
 button {
   padding: 10px 20px;
   margin: 0 10px;

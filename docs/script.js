@@ -96,48 +96,47 @@ function evaluateFitness(nn) {
   let simScore = 0;
   let simFood = generateFoodForSim();
   let steps = 0;
-  let maxSteps = 500; // prevent infinite loops
+  let maxSteps = 500;
+  let foodEaten = 0;
+  let alive = true;
 
-  while (steps < maxSteps) {
-    // Get inputs
+  while (steps < maxSteps && alive) {
     let inputs = getInputs(simSnake, simFood, simDx, simDy);
     let outputs = nn.predict(inputs);
-    // Choose direction with highest output
     let maxIndex = outputs.indexOf(Math.max(...outputs));
     let newDx = 0, newDy = 0;
-    if (maxIndex === 0) { newDx = 0; newDy = -1; } // up
-    else if (maxIndex === 1) { newDx = 0; newDy = 1; } // down
-    else if (maxIndex === 2) { newDx = -1; newDy = 0; } // left
-    else { newDx = 1; newDy = 0; } // right
-
+    if (maxIndex === 0) { newDx = 0; newDy = -1; }
+    else if (maxIndex === 1) { newDx = 0; newDy = 1; }
+    else if (maxIndex === 2) { newDx = -1; newDy = 0; }
+    else { newDx = 1; newDy = 0; }
     simDx = newDx;
     simDy = newDy;
-
     const head = { x: simSnake[0].x + simDx, y: simSnake[0].y + simDy };
-
     // Check wall
     if (head.x < 0 || head.x >= tileCount || head.y < 0 || head.y >= tileCount) {
+      alive = false;
       break;
     }
     // Check self
     for (let segment of simSnake) {
       if (head.x === segment.x && head.y === segment.y) {
-        return simScore + steps * 0.1; // fitness
+        alive = false;
+        break;
       }
     }
-
+    if (!alive) break;
     simSnake.unshift(head);
-
     if (head.x === simFood.x && head.y === simFood.y) {
       simScore += 10;
+      foodEaten++;
       simFood = generateFoodForSim();
     } else {
       simSnake.pop();
     }
-
     steps++;
   }
-  return simScore + steps * 0.1;
+  // Fitness: reward food, survival, penalize dying early
+  return (foodEaten * 100) + (steps) - (alive ? 0 : 200);
 }
 
 function generateFoodForSim() {
@@ -148,44 +147,25 @@ function generateFoodForSim() {
 
 function getInputs(snake, food, dx, dy) {
   let head = snake[0];
-  let distFoodX = food.x - head.x;
-  let distFoodY = food.y - head.y;
-  let distWallUp = head.y;
-  let distWallDown = tileCount - 1 - head.y;
-  let distWallLeft = head.x;
-  let distWallRight = tileCount - 1 - head.x;
-  // Dist to self: simple, check if next in direction is self
-  let distSelfUp = 0;
-  for (let i = head.y - 1; i >= 0; i--) {
-    if (snake.some(s => s.x === head.x && s.y === i)) {
-      distSelfUp = head.y - i;
-      break;
-    }
+  let inputs = [];
+  // For each direction: up, down, left, right
+  let directions = [
+    {dx: 0, dy: -1}, // up
+    {dx: 0, dy: 1}, // down
+    {dx: -1, dy: 0}, // left
+    {dx: 1, dy: 0} // right
+  ];
+  for (let dir of directions) {
+    let nx = head.x + dir.dx;
+    let ny = head.y + dir.dy;
+    let danger = 0;
+    if (nx < 0 || nx >= tileCount || ny < 0 || ny >= tileCount) danger = 1;
+    else if (snake.some(s => s.x === nx && s.y === ny)) danger = 1;
+    let foodAhead = (food.x === nx && food.y === ny) ? 1 : 0;
+    inputs.push(danger, foodAhead);
   }
-  let distSelfDown = 0;
-  for (let i = head.y + 1; i < tileCount; i++) {
-    if (snake.some(s => s.x === head.x && s.y === i)) {
-      distSelfDown = i - head.y;
-      break;
-    }
-  }
-  let distSelfLeft = 0;
-  for (let i = head.x - 1; i >= 0; i--) {
-    if (snake.some(s => s.x === i && s.y === head.y)) {
-      distSelfLeft = head.x - i;
-      break;
-    }
-  }
-  let distSelfRight = 0;
-  for (let i = head.x + 1; i < tileCount; i++) {
-    if (snake.some(s => s.x === i && s.y === head.y)) {
-      distSelfRight = i - head.x;
-      break;
-    }
-  }
-  let normalized = [distFoodX, distFoodY, distWallUp, distWallDown, distWallLeft, distWallRight, distSelfUp, distSelfDown, distSelfLeft, distSelfRight].map(d => d / tileCount);
-  normalized.push(dx, dy);
-  return normalized;
+  inputs.push(dx, dy);
+  return inputs;
 }
 
 function evolve() {
@@ -444,28 +424,42 @@ saveNoBtn.addEventListener('click', () => {
 // Solver mode
 let solverMode = false;
 const solverBtn = document.getElementById('solver-btn');
+const solverProgress = document.getElementById('solver-progress');
+
 
 solverBtn.addEventListener('click', () => {
   solverMode = true;
-  // Initialize GA
+  solverProgress.textContent = 'Training AI...';
   initializePopulation();
-  for (let i = 0; i < 100; i++) {
+  generation = 0;
+  let maxGenerations = 100;
+  function trainStep() {
     evolve();
+    solverProgress.textContent = `Training AI... Generation ${generation} / ${maxGenerations} | Best fitness: ${bestFitness.toFixed(2)}`;
+    if (generation < maxGenerations) {
+      setTimeout(trainStep, 10);
+    } else {
+      solverProgress.textContent = 'Training complete! Starting solver.';
+      setTimeout(() => {
+        solverProgress.textContent = '';
+        // Start the game in solver mode
+        if (!gameRunning) {
+          snake = [{ x: 10, y: 10 }];
+          dx = 0;
+          dy = 0;
+          score = 0;
+          scoreElement.textContent = score;
+          gameSpeed = 100; // reset speed
+          gameRunning = true;
+          gamePaused = false;
+          startBtn.disabled = true;
+          pauseBtn.disabled = false;
+          generateFood();
+          drawGame();
+          gameInterval = setInterval(gameLoop, gameSpeed);
+        }
+      }, 500);
+    }
   }
-  // Start the game in solver mode
-  if (!gameRunning) {
-    snake = [{ x: 10, y: 10 }];
-    dx = 0;
-    dy = 0;
-    score = 0;
-    scoreElement.textContent = score;
-    gameSpeed = 100; // reset speed
-    gameRunning = true;
-    gamePaused = false;
-    startBtn.disabled = true;
-    pauseBtn.disabled = false;
-    generateFood();
-    drawGame();
-    gameInterval = setInterval(gameLoop, gameSpeed);
-  }
+  trainStep();
 });
