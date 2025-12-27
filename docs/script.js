@@ -61,6 +61,7 @@ function drawGame() {
 
 // Move snake
 function moveSnake() {
+  if (dx === 0 && dy === 0) return;
   const head = { x: snake[0].x + dx, y: snake[0].y + dy };
 
   // Check wall collision
