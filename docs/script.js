@@ -332,20 +332,12 @@ function loadHighScores() {
 // Game loop
 function gameLoop() {
   if (!gameRunning || gamePaused) return;
-  if (solverMode && bestNN) {
-    let inputs = getInputs(snake, food, dx, dy);
-    let outputs = bestNN.predict(inputs);
-    let maxIndex = outputs.indexOf(Math.max(...outputs));
-    let newDx = 0, newDy = 0;
-    if (maxIndex === 0) { newDx = 0; newDy = -1; } // up
-    else if (maxIndex === 1) { newDx = 0; newDy = 1; } // down
-    else if (maxIndex === 2) { newDx = -1; newDy = 0; } // left
-    else { newDx = 1; newDy = 0; } // right
-    // Prevent reversing
-    if (!(newDx === -dx && newDy === -dy)) {
-      dx = newDx;
-      dy = newDy;
-    }
+  if (solverMode && hamiltonianCycle) {
+    hamiltonianIndex = (hamiltonianIndex + 1) % hamiltonianCycle.length;
+    const next = hamiltonianCycle[hamiltonianIndex];
+    const head = snake[0];
+    dx = next.x - head.x;
+    dy = next.y - head.y;
   }
   moveSnake();
   drawGame();
@@ -448,37 +440,28 @@ const solverProgress = document.getElementById('solver-progress');
 
 solverBtn.addEventListener('click', () => {
   solverMode = true;
-  solverProgress.textContent = 'Training AI...';
-  initializePopulation();
-  generation = 0;
-  let maxGenerations = 100;
-  function trainStep() {
-    evolve();
-    solverProgress.textContent = `Training AI... Generation ${generation} / ${maxGenerations} | Best fitness: ${bestFitness.toFixed(2)}`;
-    if (generation < maxGenerations) {
-      setTimeout(trainStep, 10);
-    } else {
-      solverProgress.textContent = 'Training complete! Starting solver.';
-      setTimeout(() => {
-        solverProgress.textContent = '';
-        // Start the game in solver mode
-        if (!gameRunning) {
-          snake = [{ x: 10, y: 10 }];
-          dx = 0;
-          dy = 0;
-          score = 0;
-          scoreElement.textContent = score;
-          gameSpeed = 100; // reset speed
-          gameRunning = true;
-          gamePaused = false;
-          startBtn.disabled = true;
-          pauseBtn.disabled = false;
-          generateFood();
-          drawGame();
-          gameInterval = setInterval(gameLoop, gameSpeed);
-        }
-      }, 500);
-    }
-  }
-  trainStep();
+  solverProgress.textContent = 'Calculating Hamiltonian cycle...';
+  setTimeout(() => {
+    hamiltonianCycle = window.findHamiltonianCycle(tileCount, tileCount);
+    hamiltonianIndex = 0;
+    solverProgress.textContent = hamiltonianCycle ? 'Cycle found! Starting solver.' : 'No cycle found.';
+    setTimeout(() => {
+      solverProgress.textContent = '';
+      if (!gameRunning && hamiltonianCycle) {
+        snake = [{ x: hamiltonianCycle[0].x, y: hamiltonianCycle[0].y }];
+        dx = 0;
+        dy = 0;
+        score = 0;
+        scoreElement.textContent = score;
+        gameSpeed = 100;
+        gameRunning = true;
+        gamePaused = false;
+        startBtn.disabled = true;
+        pauseBtn.disabled = false;
+        generateFood();
+        drawGame();
+        gameInterval = setInterval(gameLoop, gameSpeed);
+      }
+    }, 500);
+  }, 100);
 });

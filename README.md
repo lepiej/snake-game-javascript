@@ -42,7 +42,6 @@ A classic Snake game built with JavaScript.
 
 ## Snake Solver Mode
 
-A new feature implemented on the `snake-solver` branch adds an AI-powered solver using a genetic algorithm to automatically play and win the game.
 
 ### Changes Made:
 
@@ -50,23 +49,15 @@ A new feature implemented on the `snake-solver` branch adds an AI-powered solver
 
 2. **UI Update**: Added a "Snake Solver" button to the game controls in `index.html`.
 
-3. **Genetic Algorithm Implementation**: 
-    - Added a `NeuralNetwork` class with 10 inputs:
-       - 4 danger flags (is there a wall or self in each direction?)
-       - 4 food-ahead flags (is food in the next tile in each direction?)
-       - 2 relative food position values (normalized dx, dy from head to food)
-       - 4 one-hot direction flags (current direction)
-    - The network has 12 hidden neurons and 4 outputs (directions).
-    - Implemented a genetic algorithm with:
-       - Population of 50 neural networks
-      - Fitness evaluation through game simulation (up to 500 steps)
-      - The fitness function rewards eating food, surviving, and getting closer to the food each step, so the AI learns to turn toward the food even if it requires multiple turns.
-       - Tournament selection, crossover, and mutation (20% rate with larger range)
-       - 100 generations of evolution when the solver button is clicked
+ 3. **Hamiltonian Cycle Solver**:
+    - The solver now uses a fundamental graph theory algorithm to find a Hamiltonian cycle in the grid.
+    - The cycle is a path that visits every cell exactly once and returns to the start, guaranteeing the snake can eat all food and never die.
+    - The algorithm uses recursive backtracking to find a valid cycle, represented as a sequence of grid coordinates.
+    - When "Snake Solver" is clicked, the cycle is calculated and the snake follows it perfectly, always achieving the maximum score.
 
-**Why this matters:**
+ **Why this matters:**
 
-The improved input scheme gives the AI enough information to learn how to turn toward the food and avoid obstacles. The previous version only knew about immediate danger and food in the next tile, which made it impossible to plan or turn. Now, the AI can learn to navigate the board and actually solve the game.
+ The Hamiltonian cycle guarantees the snake will traverse every cell without hitting itself or the walls, always eating all food and achieving the highest possible score. This approach is mathematically optimal for the snake game grid.
 
 4. **Solver Mode**: 
    - When "Snake Solver" is clicked, the GA runs for 100 generations to evolve the best neural network.
