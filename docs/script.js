@@ -18,6 +18,8 @@ let score = 0;
 let highScore = localStorage.getItem('highScore') || 0;
 let gameRunning = false;
 let gamePaused = false;
+let gameSpeed = 100; // initial game speed in ms
+let gameInterval;
 
 let highScores = JSON.parse(localStorage.getItem('highScores')) || [];
 
@@ -85,6 +87,10 @@ function moveSnake() {
     score += 10;
     scoreElement.textContent = score;
     generateFood();
+    // Speed up the game
+    gameSpeed = Math.max(50, gameSpeed - 5);
+    clearInterval(gameInterval);
+    gameInterval = setInterval(gameLoop, gameSpeed);
   } else {
     snake.pop();
   }
@@ -93,6 +99,7 @@ function moveSnake() {
 // Game over
 function gameOver() {
   gameRunning = false;
+  clearInterval(gameInterval);
   startBtn.disabled = false;
   pauseBtn.disabled = true;
   if (score > highScore) {
@@ -160,13 +167,14 @@ startBtn.addEventListener('click', () => {
     dy = 0;
     score = 0;
     scoreElement.textContent = score;
+    gameSpeed = 100; // reset speed
     gameRunning = true;
     gamePaused = false;
     startBtn.disabled = true;
     pauseBtn.disabled = false;
     generateFood();
     drawGame();
-    gameInterval = setInterval(gameLoop, 100);
+    gameInterval = setInterval(gameLoop, gameSpeed);
   }
 });
 
@@ -174,6 +182,11 @@ startBtn.addEventListener('click', () => {
 function togglePause() {
   gamePaused = !gamePaused;
   pauseBtn.textContent = gamePaused ? 'Resume' : 'Pause';
+  if (gamePaused) {
+    clearInterval(gameInterval);
+  } else {
+    gameInterval = setInterval(gameLoop, gameSpeed);
+  }
 }
 
 // Pause button
@@ -192,6 +205,7 @@ resetBtn.addEventListener('click', () => {
   dy = 0;
   score = 0;
   scoreElement.textContent = score;
+  gameSpeed = 100; // reset speed
   drawGame();
 });
 
