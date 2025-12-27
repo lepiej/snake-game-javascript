@@ -28,6 +28,201 @@ let highScores = JSON.parse(localStorage.getItem('highScores')) || [];
 
 highScoreElement.textContent = highScore;
 
+// Neural Network for AI
+class NeuralNetwork {
+  constructor(weights) {
+    this.inputSize = 10;
+    this.hiddenSize = 6;
+    this.outputSize = 4;
+    if (weights) {
+      this.weightsIH = weights.slice(0, this.inputSize * this.hiddenSize);
+      this.weightsHO = weights.slice(this.inputSize * this.hiddenSize, this.inputSize * this.hiddenSize + this.hiddenSize * this.outputSize);
+      this.biasH = weights.slice(this.inputSize * this.hiddenSize + this.hiddenSize * this.outputSize, this.inputSize * this.hiddenSize + this.hiddenSize * this.outputSize + this.hiddenSize);
+      this.biasO = weights.slice(this.inputSize * this.hiddenSize + this.hiddenSize * this.outputSize + this.hiddenSize);
+    } else {
+      this.weightsIH = new Array(this.inputSize * this.hiddenSize).fill(0).map(() => Math.random() * 2 - 1);
+      this.weightsHO = new Array(this.hiddenSize * this.outputSize).fill(0).map(() => Math.random() * 2 - 1);
+      this.biasH = new Array(this.hiddenSize).fill(0).map(() => Math.random() * 2 - 1);
+      this.biasO = new Array(this.outputSize).fill(0).map(() => Math.random() * 2 - 1);
+    }
+  }
+
+  predict(inputs) {
+    // Hidden layer
+    let hidden = [];
+    for (let i = 0; i < this.hiddenSize; i++) {
+      let sum = this.biasH[i];
+      for (let j = 0; j < this.inputSize; j++) {
+        sum += inputs[j] * this.weightsIH[j * this.hiddenSize + i];
+      }
+      hidden[i] = Math.tanh(sum);
+    }
+    // Output layer
+    let outputs = [];
+    for (let i = 0; i < this.outputSize; i++) {
+      let sum = this.biasO[i];
+      for (let j = 0; j < this.hiddenSize; j++) {
+        sum += hidden[j] * this.weightsHO[j * this.outputSize + i];
+      }
+      outputs[i] = Math.tanh(sum);
+    }
+    return outputs;
+  }
+
+  getWeights() {
+    return [...this.weightsIH, ...this.weightsHO, ...this.biasH, ...this.biasO];
+  }
+}
+
+// Genetic Algorithm
+let population = [];
+let populationSize = 20;
+let generation = 0;
+let bestFitness = 0;
+let bestNN = null;
+
+function initializePopulation() {
+  population = [];
+  for (let i = 0; i < populationSize; i++) {
+    population.push(new NeuralNetwork());
+  }
+}
+
+function evaluateFitness(nn) {
+  // Simulate game with this NN
+  let simSnake = [{ x: 10, y: 10 }];
+  let simDx = 0;
+  let simDy = 0;
+  let simScore = 0;
+  let simFood = generateFoodForSim();
+  let steps = 0;
+  let maxSteps = 200; // prevent infinite loops
+
+  while (steps < maxSteps) {
+    // Get inputs
+    let inputs = getInputs(simSnake, simFood);
+    let outputs = nn.predict(inputs);
+    // Choose direction with highest output
+    let maxIndex = outputs.indexOf(Math.max(...outputs));
+    let newDx = 0, newDy = 0;
+    if (maxIndex === 0) { newDx = 0; newDy = -1; } // up
+    else if (maxIndex === 1) { newDx = 0; newDy = 1; } // down
+    else if (maxIndex === 2) { newDx = -1; newDy = 0; } // left
+    else { newDx = 1; newDy = 0; } // right
+
+    simDx = newDx;
+    simDy = newDy;
+
+    const head = { x: simSnake[0].x + simDx, y: simSnake[0].y + simDy };
+
+    // Check wall
+    if (head.x < 0 || head.x >= tileCount || head.y < 0 || head.y >= tileCount) {
+      break;
+    }
+    // Check self
+    for (let segment of simSnake) {
+      if (head.x === segment.x && head.y === segment.y) {
+        return simScore + steps * 0.1; // fitness
+      }
+    }
+
+    simSnake.unshift(head);
+
+    if (head.x === simFood.x && head.y === simFood.y) {
+      simScore += 10;
+      simFood = generateFoodForSim();
+    } else {
+      simSnake.pop();
+    }
+
+    steps++;
+  }
+  return simScore + steps * 0.1;
+}
+
+function generateFoodForSim() {
+  let f = { x: randomTile(), y: randomTile() };
+  // Simple check, assume no overlap for sim
+  return f;
+}
+
+function getInputs(snake, food) {
+  let head = snake[0];
+  let distFoodX = food.x - head.x;
+  let distFoodY = food.y - head.y;
+  let distWallUp = head.y;
+  let distWallDown = tileCount - 1 - head.y;
+  let distWallLeft = head.x;
+  let distWallRight = tileCount - 1 - head.x;
+  // Dist to self: simple, check if next in direction is self
+  let distSelfUp = 0;
+  for (let i = head.y - 1; i >= 0; i--) {
+    if (snake.some(s => s.x === head.x && s.y === i)) {
+      distSelfUp = head.y - i;
+      break;
+    }
+  }
+  let distSelfDown = 0;
+  for (let i = head.y + 1; i < tileCount; i++) {
+    if (snake.some(s => s.x === head.x && s.y === i)) {
+      distSelfDown = i - head.y;
+      break;
+    }
+  }
+  let distSelfLeft = 0;
+  for (let i = head.x - 1; i >= 0; i--) {
+    if (snake.some(s => s.x === i && s.y === head.y)) {
+      distSelfLeft = head.x - i;
+      break;
+    }
+  }
+  let distSelfRight = 0;
+  for (let i = head.x + 1; i < tileCount; i++) {
+    if (snake.some(s => s.x === i && s.y === head.y)) {
+      distSelfRight = i - head.x;
+      break;
+    }
+  }
+  return [distFoodX, distFoodY, distWallUp, distWallDown, distWallLeft, distWallRight, distSelfUp, distSelfDown, distSelfLeft, distSelfRight].map(d => d / tileCount); // normalize
+}
+
+function evolve() {
+  // Evaluate fitness
+  let fitnesses = population.map(nn => evaluateFitness(nn));
+  // Find best
+  let maxFit = Math.max(...fitnesses);
+  let bestIndex = fitnesses.indexOf(maxFit);
+  bestNN = population[bestIndex];
+  bestFitness = maxFit;
+  console.log(`Generation ${generation}: Best fitness ${bestFitness}`);
+
+  // Selection: tournament
+  let newPopulation = [];
+  for (let i = 0; i < populationSize; i++) {
+    let a = population[Math.floor(Math.random() * populationSize)];
+    let b = population[Math.floor(Math.random() * populationSize)];
+    newPopulation.push(evaluateFitness(a) > evaluateFitness(b) ? a : b);
+  }
+
+  // Crossover and mutation
+  for (let i = 0; i < populationSize; i += 2) {
+    let parent1 = newPopulation[i];
+    let parent2 = newPopulation[i + 1];
+    let child1Weights = parent1.getWeights();
+    let child2Weights = parent2.getWeights();
+    let crossoverPoint = Math.floor(Math.random() * child1Weights.length);
+    let child1 = [...child1Weights.slice(0, crossoverPoint), ...child2Weights.slice(crossoverPoint)];
+    let child2 = [...child2Weights.slice(0, crossoverPoint), ...child1Weights.slice(crossoverPoint)];
+    // Mutation
+    child1 = child1.map(w => Math.random() < 0.1 ? w + (Math.random() * 0.2 - 0.1) : w);
+    child2 = child2.map(w => Math.random() < 0.1 ? w + (Math.random() * 0.2 - 0.1) : w);
+    newPopulation[i] = new NeuralNetwork(child1);
+    if (i + 1 < populationSize) newPopulation[i + 1] = new NeuralNetwork(child2);
+  }
+  population = newPopulation;
+  generation++;
+}
+
 // Generate random food position
 function randomTile() {
   return Math.floor(Math.random() * tileCount);
@@ -136,13 +331,27 @@ function loadHighScores() {
 // Game loop
 function gameLoop() {
   if (!gameRunning || gamePaused) return;
+  if (solverMode && bestNN) {
+    let inputs = getInputs(snake, food);
+    let outputs = bestNN.predict(inputs);
+    let maxIndex = outputs.indexOf(Math.max(...outputs));
+    let newDx = 0, newDy = 0;
+    if (maxIndex === 0 && dy === 0) { newDx = 0; newDy = -1; } // up
+    else if (maxIndex === 1 && dy === 0) { newDx = 0; newDy = 1; } // down
+    else if (maxIndex === 2 && dx === 0) { newDx = -1; newDy = 0; } // left
+    else if (maxIndex === 3 && dx === 0) { newDx = 1; newDy = 0; } // right
+    if (newDx !== 0 || newDy !== 0) {
+      dx = newDx;
+      dy = newDy;
+    }
+  }
   moveSnake();
   drawGame();
 }
 
 // Handle key presses
 document.addEventListener('keydown', (e) => {
-  if (!gameRunning) return;
+  if (!gameRunning || solverMode) return;
   const key = e.key;
   if (key === 'ArrowUp' && dy === 0) {
     dx = 0;
@@ -199,6 +408,7 @@ pauseBtn.addEventListener('click', togglePause);
 resetBtn.addEventListener('click', () => {
   gameRunning = false;
   gamePaused = false;
+  solverMode = false;
   clearInterval(gameInterval);
   startBtn.disabled = false;
   pauseBtn.disabled = true;
@@ -226,4 +436,33 @@ saveYesBtn.addEventListener('click', () => {
 
 saveNoBtn.addEventListener('click', () => {
   saveModal.style.display = 'none';
+});
+
+// Solver mode
+let solverMode = false;
+const solverBtn = document.getElementById('solver-btn');
+
+solverBtn.addEventListener('click', () => {
+  solverMode = true;
+  // Initialize GA
+  initializePopulation();
+  for (let i = 0; i < 50; i++) {
+    evolve();
+  }
+  // Start the game in solver mode
+  if (!gameRunning) {
+    snake = [{ x: 10, y: 10 }];
+    dx = 0;
+    dy = 0;
+    score = 0;
+    scoreElement.textContent = score;
+    gameSpeed = 100; // reset speed
+    gameRunning = true;
+    gamePaused = false;
+    startBtn.disabled = true;
+    pauseBtn.disabled = false;
+    generateFood();
+    drawGame();
+    gameInterval = setInterval(gameLoop, gameSpeed);
+  }
 });
