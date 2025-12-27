@@ -59,7 +59,8 @@ A new feature implemented on the `snake-solver` branch adds an AI-powered solver
     - The network has 12 hidden neurons and 4 outputs (directions).
     - Implemented a genetic algorithm with:
        - Population of 50 neural networks
-       - Fitness evaluation through game simulation (up to 500 steps)
+      - Fitness evaluation through game simulation (up to 500 steps)
+      - The fitness function rewards eating food, surviving, and getting closer to the food each step, so the AI learns to turn toward the food even if it requires multiple turns.
        - Tournament selection, crossover, and mutation (20% rate with larger range)
        - 100 generations of evolution when the solver button is clicked
 

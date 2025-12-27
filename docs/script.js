@@ -99,6 +99,8 @@ function evaluateFitness(nn) {
   let maxSteps = 500;
   let foodEaten = 0;
   let alive = true;
+  let totalDistReward = 0;
+  let prevDist = Math.abs(simSnake[0].x - simFood.x) + Math.abs(simSnake[0].y - simFood.y);
 
   while (steps < maxSteps && alive) {
     let inputs = getInputs(simSnake, simFood, simDx, simDy);
@@ -126,17 +128,26 @@ function evaluateFitness(nn) {
     }
     if (!alive) break;
     simSnake.unshift(head);
+    let currDist = Math.abs(head.x - simFood.x) + Math.abs(head.y - simFood.y);
+    // Reward getting closer to food
+    if (currDist < prevDist) {
+      totalDistReward += 2;
+    } else if (currDist > prevDist) {
+      totalDistReward -= 1;
+    }
+    prevDist = currDist;
     if (head.x === simFood.x && head.y === simFood.y) {
       simScore += 10;
       foodEaten++;
       simFood = generateFoodForSim();
+      prevDist = Math.abs(head.x - simFood.x) + Math.abs(head.y - simFood.y);
     } else {
       simSnake.pop();
     }
     steps++;
   }
-  // Fitness: reward food, survival, penalize dying early
-  return (foodEaten * 100) + (steps) - (alive ? 0 : 200);
+  // Fitness: reward food, survival, getting closer to food, penalize dying early
+  return (foodEaten * 200) + (steps) + totalDistReward - (alive ? 0 : 200);
 }
 
 function generateFoodForSim() {
