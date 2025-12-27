@@ -51,12 +51,21 @@ A new feature implemented on the `snake-solver` branch adds an AI-powered solver
 2. **UI Update**: Added a "Snake Solver" button to the game controls in `index.html`.
 
 3. **Genetic Algorithm Implementation**: 
-   - Added a `NeuralNetwork` class with 12 inputs (distances to food, walls, self, and current direction), 12 hidden neurons, and 4 outputs (directions).
-   - Implemented a genetic algorithm with:
-     - Population of 50 neural networks
-     - Fitness evaluation through game simulation (up to 500 steps)
-     - Tournament selection, crossover, and mutation (20% rate with larger range)
-     - 100 generations of evolution when the solver button is clicked
+    - Added a `NeuralNetwork` class with 10 inputs:
+       - 4 danger flags (is there a wall or self in each direction?)
+       - 4 food-ahead flags (is food in the next tile in each direction?)
+       - 2 relative food position values (normalized dx, dy from head to food)
+       - 4 one-hot direction flags (current direction)
+    - The network has 12 hidden neurons and 4 outputs (directions).
+    - Implemented a genetic algorithm with:
+       - Population of 50 neural networks
+       - Fitness evaluation through game simulation (up to 500 steps)
+       - Tournament selection, crossover, and mutation (20% rate with larger range)
+       - 100 generations of evolution when the solver button is clicked
+
+**Why this matters:**
+
+The improved input scheme gives the AI enough information to learn how to turn toward the food and avoid obstacles. The previous version only knew about immediate danger and food in the next tile, which made it impossible to plan or turn. Now, the AI can learn to navigate the board and actually solve the game.
 
 4. **Solver Mode**: 
    - When "Snake Solver" is clicked, the GA runs for 100 generations to evolve the best neural network.

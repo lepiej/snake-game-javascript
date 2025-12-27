@@ -31,7 +31,7 @@ highScoreElement.textContent = highScore;
 // Neural Network for AI
 class NeuralNetwork {
   constructor(weights) {
-    this.inputSize = 12;
+    this.inputSize = 10; // 4 danger, 4 food-ahead, 2 relative food, 4 direction one-hot
     this.hiddenSize = 12;
     this.outputSize = 4;
     if (weights) {
@@ -164,7 +164,15 @@ function getInputs(snake, food, dx, dy) {
     let foodAhead = (food.x === nx && food.y === ny) ? 1 : 0;
     inputs.push(danger, foodAhead);
   }
-  inputs.push(dx, dy);
+  // Relative food position (normalized)
+  let relFoodX = (food.x - head.x) / tileCount;
+  let relFoodY = (food.y - head.y) / tileCount;
+  inputs.push(relFoodX, relFoodY);
+  // One-hot direction
+  inputs.push(dx === 0 && dy === -1 ? 1 : 0); // up
+  inputs.push(dx === 0 && dy === 1 ? 1 : 0);  // down
+  inputs.push(dx === -1 && dy === 0 ? 1 : 0); // left
+  inputs.push(dx === 1 && dy === 0 ? 1 : 0);  // right
   return inputs;
 }
 
