@@ -107,15 +107,17 @@ function gameOver() {
     highScoreElement.textContent = highScore;
     localStorage.setItem('highScore', highScore);
   }
-  submitScore('Player', score);
   alert(`Game Over! Score: ${score}`);
+  if (confirm("Do you want to save your score?")) {
+    submitScore('Player', score);
+  }
 }
 
 // Submit score to local storage
 function submitScore(name, score) {
   highScores.push({ name, score });
   highScores.sort((a, b) => b.score - a.score);
-  highScores = highScores.slice(0, 10);
+  highScores = highScores.slice(0, 5);
   localStorage.setItem('highScores', JSON.stringify(highScores));
   loadHighScores();
 }
@@ -206,6 +208,9 @@ resetBtn.addEventListener('click', () => {
   score = 0;
   scoreElement.textContent = score;
   gameSpeed = 100; // reset speed
+  highScores = [];
+  localStorage.setItem('highScores', JSON.stringify(highScores));
+  loadHighScores();
   drawGame();
 });
 
