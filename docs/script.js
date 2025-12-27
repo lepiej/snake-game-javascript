@@ -6,6 +6,9 @@ const highScoresList = document.getElementById('high-scores-list');
 const startBtn = document.getElementById('start-btn');
 const pauseBtn = document.getElementById('pause-btn');
 const resetBtn = document.getElementById('reset-btn');
+const saveModal = document.getElementById('save-modal');
+const saveYesBtn = document.getElementById('save-yes');
+const saveNoBtn = document.getElementById('save-no');
 
 const gridSize = 20;
 const tileCount = canvas.width / gridSize;
@@ -108,9 +111,7 @@ function gameOver() {
     localStorage.setItem('highScore', highScore);
   }
   alert(`Game Over! Score: ${score}`);
-  if (confirm("Do you want to save your score?")) {
-    submitScore('Player', score);
-  }
+  saveModal.style.display = 'block';
 }
 
 // Submit score to local storage
@@ -216,3 +217,13 @@ resetBtn.addEventListener('click', () => {
 
 // Load high scores on page load
 loadHighScores();
+
+// Event listeners for save modal
+saveYesBtn.addEventListener('click', () => {
+  submitScore('Player', score);
+  saveModal.style.display = 'none';
+});
+
+saveNoBtn.addEventListener('click', () => {
+  saveModal.style.display = 'none';
+});
